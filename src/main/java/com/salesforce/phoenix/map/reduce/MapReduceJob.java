@@ -27,9 +27,8 @@
 ******************************************************************************/
 package com.salesforce.phoenix.map.reduce;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -67,6 +66,7 @@ public class MapReduceJob {
 		Map<Integer, Integer> colDetails = new LinkedHashMap<Integer, Integer>();
 		boolean ignoreUpsertError = true;
 		private String zookeeperIP;
+		private String currentSCN;
 		
 		/**
 		 * Get the phoenix jdbc connection.
@@ -88,12 +88,17 @@ public class MapReduceJob {
 			
 			try {
 				zookeeperIP 		= context.getConfiguration().get("zk");
+				currentSCN  		= context.getConfiguration().get("currentSCN");
+
+				if(currentSCN != null && !currentSCN.isEmpty()) {
+					props.setProperty("CurrentSCN", currentSCN);
+				}
 				
 				//ZK connection used to get the table meta-data
-				conn_zk				= DriverManager.getConnection(getUrl(zookeeperIP), props);
+				conn_zk			= DriverManager.getConnection(getUrl(zookeeperIP), props);
 				
-				schemaName			= context.getConfiguration().get("schemaName");
-				tableName 			= context.getConfiguration().get("tableName");
+				schemaName		= context.getConfiguration().get("schemaName");
+				tableName 		= context.getConfiguration().get("tableName");
 				ignoreUpsertError 	= context.getConfiguration().get("IGNORE.INVALID.ROW").equalsIgnoreCase("0") ? false : true;
 				
 				//Get the resultset from the actual zookeeper connection. Connectionless mode throws "UnSupportedOperation" exception for this
@@ -129,7 +134,7 @@ public class MapReduceJob {
 			}
 			
 	  	}
-		
+
 		/* Tokenize the text input line based on the "," delimeter.
 		*  TypeCast the token based on the col-data-type using the convertTypeSpecificValue API below.
 		*  Upsert the data. DO NOT COMMIT.
@@ -140,8 +145,9 @@ public class MapReduceJob {
 		
 		@Override
 		public void map(LongWritable key, Text line, Context context) throws IOException, InterruptedException{
-			
-			CSVReader reader = new CSVReader(new InputStreamReader(new ByteArrayInputStream(line.toString().getBytes())), ',');			
+            String str = line.toString().trim();
+            str = CStringUnescape.toCsvString(str);
+			CSVReader reader = new CSVReader(new StringReader(str));
 			try {
 				String[] tokens = reader.readNext();
 				
