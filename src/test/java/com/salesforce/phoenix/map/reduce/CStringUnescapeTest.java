@@ -3,13 +3,13 @@ package com.salesforce.phoenix.map.reduce;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-public class CStringUnescaperTest {
+public class CStringUnescapeTest {
 
     @Test
     public void test() {
         String[][] tests = new String[][] {
                 {"\\\'", "\'"},
-                {"\\\"", "\""},
+                {"\\\"", "\"\""},
                 {"\\f", "\f"},
                 {"\\b", "\b"},
                 {"\\n", "\n"},
@@ -17,6 +17,7 @@ public class CStringUnescaperTest {
                 {"\\r", "\r"},
                 {"\\s", "s"},  // escape not needed
                 {"\\", "\\"},  // trailing escape not needed (but left?!)
+                {"\\\\", "\\\\"},
                 {"\"\"", "\"\""},
                 {"\\x00", "\u0000"},
                 {"\\x27", "\u0027"},
@@ -27,7 +28,7 @@ public class CStringUnescaperTest {
         for(String[] test: tests) {
             String in = test[0];
             String expected = test[1];
-            String out = CStringUnescaper.unescape(in);
+            String out = CStringUnescape.toCsvString(in);
             assertEquals(in, expected, out);
         }
     }
